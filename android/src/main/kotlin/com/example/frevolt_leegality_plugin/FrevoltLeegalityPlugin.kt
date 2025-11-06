@@ -40,10 +40,7 @@
 package com.example.frevolt_leegality_plugin
 
 import android.app.Activity
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.util.Log
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -59,18 +56,11 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
     private var pendingResult: Result? = null
-    private var broadcastReceiver: BroadcastReceiver? = null
-    
-    // Use a unique request code
-    private companion object {
-        const val LEEGALITY_REQUEST_CODE = 9898
-        const val CHANNEL_NAME = "frevolt_leegality_plugin"
-    }
+    private val LEEGALITY_REQUEST_CODE = 9898
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, CHANNEL_NAME)
+        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "frevolt_leegality_plugin")
         channel.setMethodCallHandler(this)
-        Log.d("LeegalityPlugin", "Plugin attached to engine")
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -95,10 +85,8 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
                 return
             }
 
-            // Store the result for later use
             pendingResult = result
 
-            // Get parameters
             val url = call.argument<String>("url")
             val enableZoom = call.argument<Boolean>("enableZoom") ?: true
             val timer = call.argument<Int>("timer") ?: 5
@@ -108,102 +96,54 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
                 return
             }
 
-            Log.d("LeegalityPlugin", "Starting Leegality with URL: $url")
-
-            // Register broadcast receiver for Leegality events
-            registerBroadcastReceiver(activity)
-
-            // Start Leegality activity
-            val intent = Intent(activity, Class.forName("com.gspl.leegality.Leegality"))
-            
-            // Build final URL with timer parameter if needed
-            var finalUrl = url
-            if (timer in 0..60) {
-                finalUrl = if (url.contains("?")) {
-                    "$url&timer=$timer"
-                } else {
-                    "$url?timer=$timer"
-                }
-            }
-            
-            intent.putExtra("url", finalUrl)
-            intent.putExtra("zoom", enableZoom)
-            
-            activity.startActivityForResult(intent, LEEGALITY_REQUEST_CODE)
-            
-        } catch (e: ClassNotFoundException) {
-            Log.e("LeegalityPlugin", "Leegality class not found", e)
-            result.error("CLASS_NOT_FOUND", "Leegality SDK not found: ${e.message}", null)
-        } catch (e: Exception) {
-            Log.e("LeegalityPlugin", "Error starting Leegality", e)
-            result.error("START_FAILED", "Failed to start Leegality: ${e.message}", null)
-        }
-    }
-
-    private fun registerBroadcastReceiver(context: Context) {
-        // Unregister previous receiver if exists
-        unregisterBroadcastReceiver()
-        
-        broadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                val data = intent?.getStringExtra("data")
-                Log.d("LeegalityPlugin", "Received broadcast: $data")
+            // Check if Leegality class exists at runtime
+            try {
+                val leegalityClass = Class.forName("com.gspl.leegality.Leegality")
+                val intent = Intent(activity, leegalityClass)
                 
-                // You can send this back to Flutter if needed
-                // For now, we'll just log it
+                var finalUrl = url
+                if (timer in 0..60) {
+                    finalUrl = if (url.contains("?")) {
+                        "$url&timer=$timer"
+                    } else {
+                        "$url?timer=$timer"
+                    }
+                }
+                
+                intent.putExtra("url", finalUrl)
+                intent.putExtra("zoom", enableZoom)
+                
+                activity.startActivityForResult(intent, LEEGALITY_REQUEST_CODE)
+                
+            } catch (e: ClassNotFoundException) {
+                result.error(
+                    "LEEGALITY_SDK_MISSING", 
+                    "Leegality SDK not found. Please add leegality.aar to your app's libs folder.", 
+                    "Download from: http://gitlab.leegality.com/leegality-public/android-sdk/blob/v4.11/leegality.aar"
+                )
             }
-        }
-        
-        val filter = IntentFilter("com.gspl.leegality.events")
-        context.registerReceiver(broadcastReceiver, filter)
-        Log.d("LeegalityPlugin", "Broadcast receiver registered")
-    }
-
-    private fun unregisterBroadcastReceiver() {
-        try {
-            broadcastReceiver?.let { receiver ->
-                activity?.unregisterReceiver(receiver)
-                broadcastReceiver = null
-                Log.d("LeegalityPlugin", "Broadcast receiver unregistered")
-            }
+            
         } catch (e: Exception) {
-            Log.e("LeegalityPlugin", "Error unregistering broadcast receiver", e)
+            result.error("START_FAILED", "Failed to start Leegality: ${e.message}", null)
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == LEEGALITY_REQUEST_CODE) {
-            Log.d("LeegalityPlugin", "Received activity result: $resultCode")
-            
             val resultMessage = when (resultCode) {
                 Activity.RESULT_OK -> {
                     val message = data?.getStringExtra("message")
-                    if (!message.isNullOrEmpty()) {
-                        "success:$message"
-                    } else {
-                        "success:Signing completed successfully"
-                    }
+                    "success:${message ?: "Signing completed"}"
                 }
                 Activity.RESULT_CANCELED -> {
                     val error = data?.getStringExtra("error")
-                    if (!error.isNullOrEmpty()) {
-                        "error:$error"
-                    } else {
-                        "error:Signing was cancelled"
-                    }
+                    "error:${error ?: "Signing cancelled"}"
                 }
-                else -> {
-                    "error:Unknown result"
-                }
+                else -> "error:Unknown result"
             }
             
-            // Send result back to Flutter
             pendingResult?.success(resultMessage)
             pendingResult = null
-            
-            // Clean up
-            unregisterBroadcastReceiver()
-            
             return true
         }
         return false
@@ -211,31 +151,23 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
-        unregisterBroadcastReceiver()
-        Log.d("LeegalityPlugin", "Plugin detached from engine")
     }
 
-    // ActivityAware methods
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
         binding.addActivityResultListener(this)
-        Log.d("LeegalityPlugin", "Plugin attached to activity")
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
         activity = null
-        Log.d("LeegalityPlugin", "Plugin detached from activity for config changes")
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         activity = binding.activity
         binding.addActivityResultListener(this)
-        Log.d("LeegalityPlugin", "Plugin reattached to activity for config changes")
     }
 
     override fun onDetachedFromActivity() {
         activity = null
-        unregisterBroadcastReceiver()
-        Log.d("LeegalityPlugin", "Plugin detached from activity")
     }
 }
