@@ -1,82 +1,15 @@
-// group = "com.example.frevolt_leegality_plugin"
-// version = "1.0-SNAPSHOT"
-
-// buildscript {
-//     ext.kotlin_version = "2.1.0"
-//     repositories {
-//         google()
-//         mavenCentral()
-//     }
-
-//     dependencies {
-//         classpath("com.android.tools.build:gradle:8.9.1")
-//         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
-//     }
-// }
-
-// allprojects {
-//     repositories {
-//         google()
-//         mavenCentral()
-//     }
-// }
-
-// apply plugin: "com.android.library"
-// apply plugin: "kotlin-android"
-
-// android {
-//     namespace = "com.example.frevolt_leegality_plugin"
-
-//     compileSdk = 36
-
-//     compileOptions {
-//         sourceCompatibility = JavaVersion.VERSION_11
-//         targetCompatibility = JavaVersion.VERSION_11
-//     }
-
-//     kotlinOptions {
-//         jvmTarget = JavaVersion.VERSION_11
-//     }
-
-//     sourceSets {
-//         main.java.srcDirs += "src/main/kotlin"
-//         test.java.srcDirs += "src/test/kotlin"
-//     }
-
-//     defaultConfig {
-//         minSdk = 24
-//     }
-
-//     dependencies {
-//         testImplementation("org.jetbrains.kotlin:kotlin-test")
-//         testImplementation("org.mockito:mockito-core:5.0.0")
-//     }
-
-//     testOptions {
-//         unitTests.all {
-//             useJUnitPlatform()
-
-//             testLogging {
-//                events "passed", "skipped", "failed", "standardOut", "standardError"
-//                outputs.upToDateWhen {false}
-//                showStandardStreams = true
-//             }
-//         }
-//     }
-// }
 group = "com.example.frevolt_leegality_plugin"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.9.0" // Updated Kotlin version for better compatibility
+    ext.kotlin_version = "1.9.0"
     repositories {
         google()
         mavenCentral()
     }
-
     dependencies {
-        classpath("com.android.tools.build:gradle:8.1.0") // More stable version
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+        classpath "com.android.tools.build:gradle:8.1.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
@@ -85,7 +18,7 @@ allprojects {
         google()
         mavenCentral()
         flatDir {
-            dirs 'libs' // Add this for local .aar files
+            dirs 'libs' // so the example app can see leegality.aar
         }
     }
 }
@@ -94,42 +27,42 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    namespace = "com.example.frevolt_leegality_plugin"
-    compileSdk = 34 // Updated to 34 for better compatibility
+    namespace "com.example.frevolt_leegality_plugin"
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 21
+    }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11
+        jvmTarget = "11"
     }
 
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"
-        main.jniLibs.srcDirs = ['libs'] // Add this line
+        main.jniLibs.srcDirs = ['libs']
         test.java.srcDirs += "src/test/kotlin"
-    }
-
-    defaultConfig {
-        minSdk = 21 // Leegality requires minSdk 21
-    }
-
-    dependencies {
-        testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
-        implementation(name: "leegality", ext: "aar") // This will include all .aar files in libs folder
     }
 
     testOptions {
         unitTests.all {
             useJUnitPlatform()
             testLogging {
-               events "passed", "skipped", "failed", "standardOut", "standardError"
-               outputs.upToDateWhen {false}
-               showStandardStreams = true
+                events "passed", "skipped", "failed", "standardOut", "standardError"
+                showStandardStreams = true
             }
         }
     }
+}
+
+dependencies {
+    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    testImplementation "org.mockito:mockito-core:5.0.0"
+    // ⛔ REMOVE direct .aar here
+    // implementation(name: "leegality", ext: "aar")
 }
