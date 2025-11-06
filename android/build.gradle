@@ -119,9 +119,7 @@ android {
     dependencies {
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testImplementation("org.mockito:mockito-core:5.0.0")
-        
-        // Add Leegality dependency
-        implementation(fileTree("libs")) // This will include all .aar files in libs folder
+        implementation(name: "leegality", ext: "aar") // This will include all .aar files in libs folder
     }
 
     testOptions {
