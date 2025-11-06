@@ -20,10 +20,10 @@ void main() {
   });
 
   test('getPlatformVersion', () async {
-    FrevoltLeegalityPlugin frevoltLeegalityPlugin = FrevoltLeegalityPlugin();
+    final version = await FrevoltLeegalityPlugin.getPlatformVersion();
     MockFrevoltLeegalityPluginPlatform fakePlatform = MockFrevoltLeegalityPluginPlatform();
     FrevoltLeegalityPluginPlatform.instance = fakePlatform;
 
-    expect(await frevoltLeegalityPlugin.getPlatformVersion(), '42');
+    expect(version, '42');
   });
 }
