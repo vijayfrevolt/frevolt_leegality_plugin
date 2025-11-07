@@ -1,13 +1,3 @@
-
-// import 'frevolt_leegality_plugin_platform_interface.dart';
-
-// class FrevoltLeegalityPlugin {
-//   Future<String?> getPlatformVersion() {
-//     return FrevoltLeegalityPluginPlatform.instance.getPlatformVersion();
-//   }
-// }
-
-
 import 'dart:async';
 import 'package:flutter/services.dart';
 
@@ -26,15 +16,16 @@ class FrevoltLeegalityPlugin {
     }
   }
 
+  static Future<String> checkLeegalityAvailability() async {
+    try {
+      final String result = await _channel.invokeMethod('checkLeegalityAvailability');
+      return result;
+    } on PlatformException catch (e) {
+      return 'error: ${e.message}';
+    }
+  }
+
   /// Starts the Leegality signing process
-  /// 
-  /// [url] - The signing URL from Leegality (required)
-  /// [enableZoom] - Whether to enable zoom feature (default: true)
-  /// [timer] - Duration for success screen in seconds (0-60, default: 5)
-  /// 
-  /// Returns a Future that completes with a string result:
-  /// - "success:message" when signing is successful
-  /// - "error:message" when there's an error
   static Future<String> startLeegalitySigning({
     required String url,
     bool enableZoom = true,

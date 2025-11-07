@@ -1,42 +1,3 @@
-// package com.example.frevolt_leegality_plugin
-
-// import io.flutter.embedding.engine.plugins.FlutterPlugin
-// import io.flutter.plugin.common.MethodCall
-// import io.flutter.plugin.common.MethodChannel
-// import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-// import io.flutter.plugin.common.MethodChannel.Result
-
-// /** FrevoltLeegalityPlugin */
-// class FrevoltLeegalityPlugin :
-//     FlutterPlugin,
-//     MethodCallHandler {
-//     // The MethodChannel that will the communication between Flutter and native Android
-//     //
-//     // This local reference serves to register the plugin with the Flutter Engine and unregister it
-//     // when the Flutter Engine is detached from the Activity
-//     private lateinit var channel: MethodChannel
-
-//     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-//         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "frevolt_leegality_plugin")
-//         channel.setMethodCallHandler(this)
-//     }
-
-//     override fun onMethodCall(
-//         call: MethodCall,
-//         result: Result
-//     ) {
-//         if (call.method == "getPlatformVersion") {
-//             result.success("Android ${android.os.Build.VERSION.RELEASE}")
-//         } else {
-//             result.notImplemented()
-//         }
-//     }
-
-//     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-//         channel.setMethodCallHandler(null)
-//     }
-// }
-
 package com.example.frevolt_leegality_plugin
 
 import android.app.Activity
@@ -61,12 +22,18 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "frevolt_leegality_plugin")
         channel.setMethodCallHandler(this)
+        Log.d("LeegalityPlugin", "✅ Plugin attached to engine")
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        Log.d("LeegalityPlugin", "📞 Method called: ${call.method}")
+        
         when (call.method) {
             "getPlatformVersion" -> {
                 result.success("Android ${android.os.Build.VERSION.RELEASE}")
+            }
+            "checkLeegalityAvailability" -> {  // ✅ ADD THIS METHOD
+                checkLeegalityAvailability(result)
             }
             "startLeegalitySigning" -> {
                 startLeegalitySigning(call, result)
@@ -74,6 +41,25 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
             else -> {
                 result.notImplemented()
             }
+        }
+    }
+
+    // ✅ ADD THIS NEW METHOD
+    private fun checkLeegalityAvailability(result: Result) {
+        try {
+            Log.d("LeegalityPlugin", "🔍 Checking for Leegality SDK...")
+            
+            // Try to load the Leegality class
+            val leegalityClass = Class.forName("com.gspl.leegality.Leegality")
+            Log.d("LeegalityPlugin", "✅ Leegality SDK found!")
+            result.success("available")
+            
+        } catch (e: ClassNotFoundException) {
+            Log.e("LeegalityPlugin", "❌ Leegality SDK not found", e)
+            result.success("missing")
+        } catch (e: Exception) {
+            Log.e("LeegalityPlugin", "❌ Error checking Leegality: ${e.message}", e)
+            result.error("CHECK_FAILED", "Failed to check Leegality availability: ${e.message}", null)
         }
     }
 
@@ -96,6 +82,8 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
                 return
             }
 
+            Log.d("LeegalityPlugin", "🚀 Starting Leegality signing with URL: $url")
+
             // Check if Leegality class exists at runtime
             try {
                 val leegalityClass = Class.forName("com.gspl.leegality.Leegality")
@@ -113,9 +101,11 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
                 intent.putExtra("url", finalUrl)
                 intent.putExtra("zoom", enableZoom)
                 
+                Log.d("LeegalityPlugin", "📤 Starting Leegality activity...")
                 activity.startActivityForResult(intent, LEEGALITY_REQUEST_CODE)
                 
             } catch (e: ClassNotFoundException) {
+                Log.e("LeegalityPlugin", "❌ Leegality SDK not found during signing", e)
                 result.error(
                     "LEEGALITY_SDK_MISSING", 
                     "Leegality SDK not found. Please add leegality.aar to your app's libs folder.", 
@@ -124,22 +114,30 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
             }
             
         } catch (e: Exception) {
+            Log.e("LeegalityPlugin", "❌ Failed to start Leegality: ${e.message}", e)
             result.error("START_FAILED", "Failed to start Leegality: ${e.message}", null)
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        Log.d("LeegalityPlugin", "📥 Activity result: requestCode=$requestCode, resultCode=$resultCode")
+        
         if (requestCode == LEEGALITY_REQUEST_CODE) {
             val resultMessage = when (resultCode) {
                 Activity.RESULT_OK -> {
                     val message = data?.getStringExtra("message")
+                    Log.d("LeegalityPlugin", "✅ Signing completed: $message")
                     "success:${message ?: "Signing completed"}"
                 }
                 Activity.RESULT_CANCELED -> {
                     val error = data?.getStringExtra("error")
+                    Log.d("LeegalityPlugin", "❌ Signing cancelled: $error")
                     "error:${error ?: "Signing cancelled"}"
                 }
-                else -> "error:Unknown result"
+                else -> {
+                    Log.d("LeegalityPlugin", "❓ Unknown result: $resultCode")
+                    "error:Unknown result"
+                }
             }
             
             pendingResult?.success(resultMessage)
@@ -151,23 +149,28 @@ class FrevoltLeegalityPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, 
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        Log.d("LeegalityPlugin", "🔌 Plugin detached from engine")
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
         binding.addActivityResultListener(this)
+        Log.d("LeegalityPlugin", "📱 Plugin attached to activity")
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
         activity = null
+        Log.d("LeegalityPlugin", "🔄 Plugin detached for config changes")
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         activity = binding.activity
         binding.addActivityResultListener(this)
+        Log.d("LeegalityPlugin", "🔄 Plugin reattached for config changes")
     }
 
     override fun onDetachedFromActivity() {
         activity = null
+        Log.d("LeegalityPlugin", "🔌 Plugin detached from activity")
     }
 }
