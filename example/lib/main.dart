@@ -11,61 +11,48 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  String _status = 'Initializing...';
   String _platformVersion = 'Unknown';
-  String _signingResult = 'Not started';
+  String _leegalityResult = 'Not tested';
 
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    _initPlugin();
   }
 
-  Future<void> initPlatformState() async {
-    String platformVersion;
+  Future<void> _initPlugin() async {
     try {
-      platformVersion = await FrevoltLeegalityPlugin.getPlatformVersion() ?? 'Unknown platform version';
-    } catch (e) {
-      platformVersion = 'Failed to get platform version: $e';
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
-  }
-
-  Future<void> startSigning() async {
-    try {
-      final result = await FrevoltLeegalityPlugin.startLeegalitySigning(
-        url: 'https://app1.leegality.com/sign/your-document-id-here', // Replace with actual URL
-        enableZoom: true,
-        timer: 5,
-      );
-      
+      // Test 1: Basic plugin communication
+      _platformVersion = await FrevoltLeegalityPlugin.getPlatformVersion() ?? 'Unknown';
       setState(() {
-        _signingResult = result;
+        _status = 'Plugin communication: ✅';
       });
-      
-      // Show result in dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Signing Result'),
-            content: Text(result),
-            actions: [
-              TextButton(
-                child: Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          );
-        },
-      );
     } catch (e) {
       setState(() {
-        _signingResult = 'Error: $e';
+        _status = 'Plugin communication: ❌ $e';
+      });
+    }
+  }
+
+  Future<void> _testLeegalitySDK() async {
+    try {
+      setState(() {
+        _leegalityResult = 'Testing...';
+      });
+
+      final result = await FrevoltLeegalityPlugin.startLeegalitySigning(
+        url: 'https://sandbox.leegality.com/sign/7017b64e-b75e-4606-8ba3-3d212cfd6428',
+        enableZoom: true,
+        timer: 10,
+      );
+
+      setState(() {
+        _leegalityResult = 'Result: $result';
+      });
+    } catch (e) {
+      setState(() {
+        _leegalityResult = 'Error: $e';
       });
     }
   }
@@ -75,20 +62,42 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Leegality Plugin Example'),
+          title: const Text('Leegality Plugin Test'),
         ),
-        body: Center(
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Running on: $_platformVersion\n'),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: startSigning,
-                child: Text('Start Leegality Signing'),
+              // Plugin Status
+              Text(
+                'Plugin Status:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
+              Text(_status),
+              SizedBox(height: 10),
+              
+              // Platform Version
+              Text(
+                'Platform Version:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(_platformVersion),
               SizedBox(height: 20),
-              Text('Last result: $_signingResult'),
+              
+              // Test Button
+              ElevatedButton(
+                onPressed: _testLeegalitySDK,
+                child: Text('Test Leegality SDK'),
+              ),
+              SizedBox(height: 10),
+              
+              // Leegality Result
+              Text(
+                'Leegality Test Result:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(_leegalityResult),
             ],
           ),
         ),
